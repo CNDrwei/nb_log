@@ -1,3 +1,4 @@
+# coding=utf8
 """
 此文件nb_log_config.py是自动生成到python项目的根目录的。
 在这里面写的变量会覆盖此文件nb_log_config_default中的值。对nb_log包进行默认的配置。
