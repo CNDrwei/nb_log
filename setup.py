@@ -24,6 +24,7 @@ install_requires = [
 
 if os.name == 'nt':
     install_requires.append('pywin32')
+    install_requires.append('pywinpty')
 
 setup(
     name='nb_log',  #
@@ -36,10 +37,6 @@ setup(
     long_description_content_type="text/markdown",
     long_description=open(filepath, 'r', encoding='utf8').read(),
     # data_files=[filepath],
-    author='bfzs',
-    author_email='ydf0509@sohu.com',
-    maintainer='ydf',
-    maintainer_email='ydf0509@sohu.com',
     license='BSD License',
     packages=find_packages(),
     include_package_data=True,
