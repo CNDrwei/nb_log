@@ -1,18 +1,4 @@
 # coding=utf8
-"""
-此文件nb_log_config.py是自动生成到python项目的根目录的。
-在这里面写的变量会覆盖此文件nb_log_config_default中的值。对nb_log包进行默认的配置。
-但最终配置方式是由get_logger_and_add_handlers方法的各种传参决定，如果方法相应的传参为None则使用这里面的配置。
-"""
-
-"""
-如果反对日志有各种彩色，可以设置 DEFAULUT_USE_COLOR_HANDLER = False
-如果反对日志有块状背景彩色，可以设置 DISPLAY_BACKGROUD_COLOR_IN_CONSOLE = False
-如果想屏蔽nb_log包对怎么设置pycahrm的颜色的提示，可以设置 WARNING_PYCHARM_COLOR_SETINGS = False
-如果想改变日志模板，可以设置 FORMATTER_KIND 参数，只带了7种模板，可以自定义添加喜欢的模板
-LOG_PATH 配置文件日志的保存路径的文件夹。
-"""
-
 # noinspection PyUnresolvedReferences
 import logging
 import os
@@ -111,7 +97,6 @@ FORMATTER_DICT = {
     7: logging.Formatter('%(asctime)s - %(name)s - "%(filename)s:%(lineno)d" - %(levelname)s - %(message)s', "%Y-%m-%d %H:%M:%S"),  # 一个只显示简短文件名和所处行数的日志模板
 
     8: JsonFormatterJumpAble('%(asctime)s - %(name)s - %(levelname)s - %(message)s - "%(filename)s %(lineno)d -" ', "%Y-%m-%d %H:%M:%S", json_ensure_ascii=False),  # 这个是json日志，方便分析.
-
     10: logging.Formatter(
         f'{my_name} - {my_addr} - %(asctime)s - %(name)s - "%(pathname)s:%(lineno)d" - %(funcName)s - %(levelname)s - %(message)s',
         "%Y-%m-%d %H:%M:%S"),
