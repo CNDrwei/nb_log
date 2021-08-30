@@ -23,7 +23,7 @@ install_requires = [
 ]
 
 if os.name == 'nt':
-    install_requires.append('pywin32')
+    install_requires.append('pywin32==228')
     install_requires.append('pywinpty')
 
 setup(
