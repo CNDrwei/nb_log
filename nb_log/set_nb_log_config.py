@@ -98,7 +98,10 @@ def auto_creat_config_file_to_project_root_path():
                                ''')
     # with (Path(sys.path[1]) / Path('nb_log_config.py')).open(mode='w', encoding='utf8') as f:
     #     f.write(config_file_content)
-    copyfile(Path(__file__).parent / Path('nb_log_config_default.py'), Path(sys.path[1]) / Path('nb_log_config.py'))
+    if os.name == 'nt':
+        copyfile(Path(__file__).parent / Path('nb_log_config_default.py'), Path(sys.path[2]) / Path('nb_log_config.py'))
+    else:
+        copyfile(Path(__file__).parent / Path('nb_log_config_default.py'), Path(sys.path[1]) / Path('nb_log_config.py'))
 
 
 use_config_form_nb_log_config_module()
