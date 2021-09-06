@@ -20,15 +20,16 @@ install_requires = [
     'pika',
     'flask',
     'python-json-logger==0.1.10',
+    'nb_filelock',
 ]
 
 if os.name == 'nt':
-    install_requires.append('pywin32==228')
+    install_requires.append('pywin32==227')
     install_requires.append('pywinpty')
 
 setup(
     name='nb_log',  #
-    version="5.2",
+    version="5.3",
     description=(
         'very sharp color display,monkey patch bulitin print  and high-performance multiprocess safe roating file handler,other handlers includeing dintalk ,email,kafka,elastic and so on '
     ),
