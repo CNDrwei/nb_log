@@ -7,7 +7,7 @@ from pathlib import Path  # noqa
 import socket
 from pythonjsonlogger.jsonlogger import JsonFormatter
 # 获取本机hostname
-my_name = socket.getfqdn(socket.gethostname())
+my_name = socket.gethostname()
 # 获取本机ip
 my_addr = socket.gethostbyname(my_name)
 def get_host_ip():
