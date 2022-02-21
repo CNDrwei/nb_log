@@ -33,7 +33,7 @@ def nb_print(*args, sep=' ', end='\n', file=None):
         # sys.stdout.write(f'"{__file__}:{sys._getframe().f_lineno}"    {x}\n')
         if nb_log_config_default.DISPLAY_BACKGROUD_COLOR_IN_CONSOLE:
             stdout_write(
-                f'\033[0;34m{time.strftime("%H:%M:%S")}  "{file_name}:{line}"   \033[0;30;44m{sep.join(args)}\033[0m{end} \033[0m')  # 36  93 96 94
+                f'\033[0;34m{time.strftime("%H:%M:%S")}  "{file_name}:{line}"   \033[0;37;44m{sep.join(args)}\033[0m{end} \033[0m')  # 36  93 96 94
         else:
             stdout_write(
                 f'\033[0;34m{time.strftime("%H:%M:%S")}  "{file_name}:{line}"   {sep.join(args)} {end} \033[0m')  # 36  93 96 94
@@ -58,6 +58,7 @@ def use_config_form_nb_log_config_module():
     file_name = sys._getframe(1).f_code.co_filename
     try:
         m = importlib.import_module('nb_log_config')
+        importlib.reload(m)  # 这行是防止用户在导入框架之前，写了 from nb_log_config import xx 这种，导致 m.__dict__.items() 不包括所有配置变量了。
         msg = f'nb_log包 读取到\n "{m.__file__}:1" 文件里面的变量作为优先配置了\n'
         # nb_print(msg)
         if is_main_process():
@@ -77,15 +78,14 @@ def auto_creat_config_file_to_project_root_path():
     """
     :return:
     """
-    if Path(sys.path[1]).as_posix() in Path(__file__).parent.parent.absolute().as_posix():
-        pass
-        nb_print('不希望在本项目里面创建')
+    if Path(sys.path[1]).as_posix() == Path(__file__).parent.parent.absolute().as_posix():
+        nb_print(f'不希望在本项目 {sys.path[1]} 里面创建 nb_log_config.py')
         return
     # noinspection PyPep8
     """
         如果没设置PYTHONPATH，sys.path会这样，取第一个就会报错
         ['', '/data/miniconda3dir/inner/envs/mtfy/lib/python36.zip', '/data/miniconda3dir/inner/envs/mtfy/lib/python3.6', '/data/miniconda3dir/inner/envs/mtfy/lib/python3.6/lib-dynload', '/root/.local/lib/python3.6/site-packages', '/data/miniconda3dir/inner/envs/mtfy/lib/python3.6/site-packages']
-        
+
         ['', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\python36.zip', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\DLLs', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib', 'F:\\minicondadir\\Miniconda2\\envs\\py36', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\multiprocessing_log_manager-0.2.0-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\pyinstaller-3.4-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\pywin32_ctypes-0.2.0-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\altgraph-0.16.1-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\macholib-1.11-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\pefile-2019.4.18-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\win32', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\win32\\lib', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\Pythonwin']
         """
     if '/lib/python' in sys.path[1] or r'\lib\python' in sys.path[1] or '.zip' in sys.path[1]:
@@ -96,13 +96,21 @@ def auto_creat_config_file_to_project_root_path():
                                要是连PYTHONPATH这个知识点都不知道，那就要google 百度去学习PYTHONPATH作用了，非常重要非常好用，
                                不知道PYTHONPATH作用的人，在深层级文件夹作为运行起点导入外层目录的包的时候，如果把深层级文件作为python的执行文件起点，经常需要到处很low的手写 sys.path.insert硬编码，这种方式写代码太low了。
                                知道PYTHONPATH的人无论项目有多少层级的文件夹，无论是多深层级文件夹导入外层文件夹，代码里面永久都不需要出现手动硬编码操纵sys.path.append
+
+                               懂PYTHONPATH 的重要性和妙用见： https://github.com/ydf0509/pythonpathdemo
                                ''')
     # with (Path(sys.path[1]) / Path('nb_log_config.py')).open(mode='w', encoding='utf8') as f:
     #     f.write(config_file_content)
-    if os.name == 'nt':
-        copyfile(Path(__file__).parent / Path('nb_log_config_default.py'), Path(sys.path[2]) / Path('nb_log_config.py'))
-    else:
-        copyfile(Path(__file__).parent / Path('nb_log_config_default.py'), Path(sys.path[1]) / Path('nb_log_config.py'))
+    if r'\plugins\python\helpers\pydev' in sys.path[1] or 'pydev' in sys.path[1]:
+        # 在pycharm中以debug启动, 会默认在pycharm的plugins\python\helpers\pydev位置生成nb_log_config文件
+        sys.path.remove(sys.path[1])
 
+    copyfile(Path(__file__).parent / Path('nb_log_config_default.py'), Path(sys.path[1]) / Path('nb_log_config.py'))
+
+
+if r'\plugins\python\helpers\pydev' in sys.path[1] or 'pydev' in sys.path[1]:
+    # 在pycharm中以debug启动, 会默认在pycharm的plugins\python\helpers\pydev位置生成nb_log_config文件
+    sys.path.remove(sys.path[1])
+    nb_print(f'当前项目的根目录是：->  {sys.path[1]}')  # 如果获取的项目根目录不正确，请不要在python代码硬编码操作sys.path。pycahrm自动给项目根目录加了PYTHONPATh，如果是shell命令行运行python命令前脚本前先在会话中设置临时环境变量 export PYTHONPATH=项目根目录
 
 use_config_form_nb_log_config_module()

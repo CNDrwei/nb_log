@@ -317,14 +317,14 @@ class ElasticHandler(logging.Handler):
     last_es_op_time = time.time()
     has_start_do_bulk_op = False
 
-    def __init__(self, elastic_hosts: list, elastic_port, index_prefix='pylog-'):
+    def __init__(self, elastic_urls: list, index_prefix='pylog-'):
         """
         :param elastic_hosts:  es的ip地址，数组类型
         :param elastic_port：  es端口
         :param index_prefix: index名字前缀。
         """
         logging.Handler.__init__(self)
-        self._es_client = Elasticsearch(elastic_hosts, port=elastic_port)
+        self._es_client = Elasticsearch(elastic_urls)
         self._index_prefix = index_prefix
         t = Thread(target=self._do_bulk_op)
         t.setDaemon(True)
@@ -433,7 +433,6 @@ class ColorHandler(logging.Handler):
             stream = sys.stdout  # stderr无彩。
         self.stream = stream
         self._display_method = 7 if os_name == 'posix' else 0
-        self._word_color = 30 if os_name == 'posix' else 30
 
     def flush(self):
         """
@@ -451,19 +450,19 @@ class ColorHandler(logging.Handler):
         if record_level == 10:
             # msg_color = ('\033[0;32m%s\033[0m' % msg)  # 绿色
             # print(msg1)
-            msg_color = f'\033[0;32m{assist_msg}\033[0m \033[0;{self._word_color};42m{effective_information_msg}\033[0m'  # 绿色
+            msg_color = f'\033[0;32m{assist_msg}\033[0m \033[0;37;42m{effective_information_msg}\033[0m'  # 绿色
         elif record_level == 20:
             # msg_color = ('\033[%s;%sm%s\033[0m' % (self._display_method, self.bule, msg))  # 青蓝色 36    96
-            msg_color = f'\033[0;36m{assist_msg}\033[0m \033[0;{self._word_color};46m{effective_information_msg}\033[0m'
+            msg_color = f'\033[0;36m{assist_msg}\033[0m \033[0;37;46m{effective_information_msg}\033[0m'
         elif record_level == 30:
             # msg_color = ('\033[%s;%sm%s\033[0m' % (self._display_method, self.yellow, msg))
-            msg_color = f'\033[0;33m{assist_msg}\033[0m \033[0;{self._word_color};43m{effective_information_msg}\033[0m'
+            msg_color = f'\033[0;33m{assist_msg}\033[0m \033[0;37;43m{effective_information_msg}\033[0m'
         elif record_level == 40:
             # msg_color = ('\033[%s;35m%s\033[0m' % (self._display_method, msg))  # 紫红色
-            msg_color = f'\033[0;35m{assist_msg}\033[0m \033[0;{self._word_color};45m{effective_information_msg}\033[0m'
+            msg_color = f'\033[0;35m{assist_msg}\033[0m \033[0;37;45m{effective_information_msg}\033[0m'
         elif record_level == 50:
             # msg_color = ('\033[%s;31m%s\033[0m' % (self._display_method, msg))  # 血红色
-            msg_color = f'\033[0;31m{assist_msg}\033[0m \033[0;{self._word_color};41m{effective_information_msg}\033[0m'
+            msg_color = f'\033[0;31m{assist_msg}\033[0m \033[0;37;41m{effective_information_msg}\033[0m'
         else:
             msg_color = f'{assist_msg}  {effective_information_msg}'
         return msg_color
@@ -495,19 +494,19 @@ class ColorHandler(logging.Handler):
         background_color = ''
         complete_color = ''
         if record_level == 10:
-            background_color = f'[0;{self._word_color};42m'
+            background_color = f'[0;30;42m'
             complete_color = f'[0;32m'
         elif record_level == 20:
-            background_color = f'[0;{self._word_color};46m'
+            background_color = f'[0;30;46m'
             complete_color = f'[0;36m'
         elif record_level == 30:
-            background_color = f'[0;{self._word_color};43m'
+            background_color = f'[0;30;43m'
             complete_color = f'[0;33m'
         elif record_level == 40:
-            background_color = f'[0;{self._word_color};45m'
+            background_color = f'[0;37;45m'
             complete_color = f'[0;35m'
         elif record_level == 50:
-            background_color = f'[0;{self._word_color};41m'
+            background_color = f'[0;37;41m'
             complete_color = f'[0;31m'
         record_copy.msg = f'\033{background_color}{record_copy.msg}\033[0m'
         msg_color_without = self.format(record_copy)
@@ -516,6 +515,35 @@ class ColorHandler(logging.Handler):
             msg_color_without = msg_color_without.replace(rf'\u001b{background_color}', f'\033{background_color}')
             msg_color_without = msg_color_without.replace(r'\u001b[0m', f'\033[0m\033{complete_color}')
         msg_color = f'\033{complete_color}{msg_color_without}\033[0m'
+        # print(repr(msg_color))
+        return msg_color
+
+    def __build_color_msg_with_backgroud_color3333(self, record_level, record_copy: logging.LogRecord, ):
+        background_color = ''
+        complete_color = ''
+        if record_level == 10:
+            background_color = f'[0;30;42m'
+            complete_color = f'[0;32m'
+        elif record_level == 20:
+            background_color = f'[0;30;46m'
+            complete_color = f'[0;36m'
+        elif record_level == 30:
+            background_color = f'[0;30;43m'
+            complete_color = f'[0;33m'
+        elif record_level == 40:
+            background_color = f'[0;37;45m'
+            complete_color = f'[0;35m'
+        elif record_level == 50:
+            background_color = f'[0;37;41m'
+            complete_color = f'[0;31m'
+        record_copy.msg = f'\033{complete_color}{record_copy.msg}\033[0m'
+        msg_color_without = self.format(record_copy)
+        # print(repr(msg_color))
+        if isinstance(self.formatter, JsonFormatter) and background_color:  # json会把/033 转义成\u001b,导致颜色显示不出来。
+            msg_color_without = msg_color_without.replace(rf'\u001b{background_color}', f'\033{background_color}')
+            msg_color_without = msg_color_without.replace(r'\u001b[0m', f'\033[0m\033{complete_color}')
+        # msg_color = f'\033{complete_color}{msg_color_without}\033[0m'
+        msg_color = f'\033{background_color}{msg_color_without}\033[0m'
         # print(repr(msg_color))
         return msg_color
 
@@ -607,7 +635,7 @@ class ConcurrentRotatingFileHandlerWithBufferInitiativeWindwos(ConcurrentRotatin
     """
     ConcurrentRotatingFileHandler 解决了多进程下文件切片问题，但频繁操作文件锁，带来程序性能巨大下降。
     反复测试极限日志写入频次，在windows上比不切片的写入性能降低100倍。在linux上比不切片性能降低10倍。多进程切片文件锁在windows使用pywin32，在linux上还是要fcntl实现。
-    所以此类使用缓存1秒钟内的日志为一个长字符串再插入，大幅度地降低了文件加锁和解锁的次数，速度和不做多进程安全切片的文件写入速度几乎一样。
+    所以此类使用缓存1秒钟内的日志为一个长字符串再插入，大幅度地降低了文件加锁和解锁的次数，速度比不做多进程安全切片的文件写入速度更快。
     主动触发写入文件。
     """
     file_handler_list = []
@@ -678,11 +706,11 @@ class ConcurrentRotatingFileHandlerWithBufferInitiativeWindwos(ConcurrentRotatin
                 self._do_unlock()
 
 
-class ConcurrentRotatingFileHandlerWithBufferInitiativeLinux(ConcurrentRotatingFileHandlerWithBufferInitiativeWindwos):
+class ConcurrentRotatingFileHandlerWithBufferInitiativeLinux00000000(ConcurrentRotatingFileHandlerWithBufferInitiativeWindwos):
     """
     ConcurrentRotatingFileHandler 解决了多进程下文件切片问题，但频繁操作文件锁，带来程序性能巨大下降。
     反复测试极限日志写入频次，在windows上比不切片的写入性能降低100倍。在linux上比不切片性能降低10倍。多进程切片文件锁在windows使用pywin32，在linux上还是要fcntl实现。
-    所以此类使用缓存1秒钟内的日志为一个长字符串再插入，大幅度地降低了文件加锁和解锁的次数，速度和不做多进程安全切片的文件写入速度几乎一样。
+    所以此类使用缓存1秒钟内的日志为一个长字符串再插入，大幅度地降低了文件加锁和解锁的次数，速度比不做多进程安全切片的文件写入更快。
     主动触发写入文件。
     """
     file_handler_list = []
@@ -702,6 +730,9 @@ class ConcurrentRotatingFileHandlerWithBufferInitiativeLinux(ConcurrentRotatingF
         # very_nb_print(self.buffer_msgs_queue.qsize())
         with self.__lock_for_rotate:
             self._rollover_and_do_write()
+
+
+ConcurrentRotatingFileHandlerWithBufferInitiativeLinux = ConcurrentRotatingFileHandler
 
 
 class CompatibleSMTPSSLHandler(handlers.SMTPHandler):

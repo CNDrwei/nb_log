@@ -23,7 +23,7 @@ import multiprocessing
 import typing
 from functools import lru_cache
 from logging import FileHandler
-from nb_log import nb_log_config_default
+from nb_log import nb_log_config_default  # noqa
 from nb_log.handlers import *
 
 
@@ -187,6 +187,7 @@ class LogManager(object):
     """
     logger_name_list = []
     logger_list = []
+    preset_name__level_map = dict()
 
     def __init__(self, logger_name: typing.Union[str, None] = 'nb_log_default_namespace'):
         """
@@ -197,6 +198,15 @@ class LogManager(object):
                           '一定要弄清楚原生logging包的日志name的意思。这个命名空间是双刃剑')
         self._logger_name = logger_name
         self.logger = logging.getLogger(logger_name)
+
+    def preset_log_level(self, log_level_int=20):
+        """
+        提前设置锁定日志级别，当之后再设置该命名空间日志的级别的时候，按照提前预设的级别，无视之后设定的级别。
+        主要是针对动态初始化的日志，在生成日志之后再去设置日志级别不方便。
+        :param log_level_int:
+        :return:
+        """
+        self.preset_name__level_map[self._logger_name] = log_level_int
 
     # 加*是为了强制在调用此方法时候使用关键字传参，如果以位置传参强制报错，因为此方法后面的参数中间可能以后随时会增加更多参数，造成之前的使用位置传参的代码参数意义不匹配。
     # noinspection PyAttributeOutsideInit
@@ -221,6 +231,8 @@ class LogManager(object):
               2为多进程安全按天自动切割的文件日志，同一个文件，每天生成一个日志
               3为不自动切割的单个文件的日志(不切割文件就不会出现所谓进程安不安全的问题)
               4为 WatchedFileHandler，这个是需要在linux下才能使用，需要借助lograte外力进行日志文件的切割，多进程安全。
+              5 为第三方的concurrent_log_handler.ConcurrentRotatingFileHandler按日志文件大小切割的文件日志，
+                这个是采用了文件锁，多进程安全切割，文件锁在linux上使用fcntl性能还行，win上使用win32con性能非常惨。按大小切割建议不要选第5个个filehandler而是选择第1个。
        :param mongo_url : mongodb的连接，为None时候不添加mongohandler
        :param is_add_elastic_handler: 是否记录到es中。
        :param is_add_kafka_handler: 日志是否发布到kafka。
@@ -258,7 +270,7 @@ class LogManager(object):
         self._log_path = log_path
         self._log_filename = log_filename
         self._log_file_size = log_file_size
-        if log_file_handler_type not in (None, 1, 2, 3, 4):
+        if log_file_handler_type not in (None, 1, 2, 3, 4, 5):
             raise ValueError("log_file_handler_type的值必须设置为 1 2 3 4这四个数字")
         self._log_file_handler_type = log_file_handler_type or nb_log_config_default.LOG_FILE_HANDLER_TYPE
         self._mongo_url = mongo_url
@@ -275,8 +287,11 @@ class LogManager(object):
             self._formatter = formatter_template
         else:
             raise ValueError('设置的 formatter_template 不正确')
-
-        self.logger.setLevel(self._logger_level)
+        if self._logger_name in self.preset_name__level_map:
+            # print(self.preset_name__level_map)
+            self.logger.setLevel(self.preset_name__level_map[self._logger_name])
+        else:
+            self.logger.setLevel(self._logger_level)
         self.__add_handlers()
         # self.logger_name_list.append(self._logger_name)
         # self.logger_list.append(self.logger)
@@ -333,14 +348,14 @@ class LogManager(object):
                 self._judge_logger_has_handler_type(ConcurrentRotatingFileHandlerWithBufferInitiativeWindwos) or
                 self._judge_logger_has_handler_type(ConcurrentRotatingFileHandlerWithBufferInitiativeLinux) or
                 self._judge_logger_has_handler_type(ConcurrentDayRotatingFileHandler) or
-                self._judge_logger_has_handler_type(FileHandler)
-        ) and all(
-            [self._log_path, self._log_filename]):
+                self._judge_logger_has_handler_type(FileHandler) or
+                self._judge_logger_has_handler_type(ConcurrentRotatingFileHandler)
+        ) and all([self._log_path, self._log_filename]):
             if not os.path.exists(self._log_path):
                 os.makedirs(self._log_path)
             log_file = os.path.join(self._log_path, self._log_filename)
             file_handler = None
-            if self._log_file_handler_type in (1, None):
+            if self._log_file_handler_type == 1:
                 if os_name == 'nt':
                     # 在win下使用这个ConcurrentRotatingFileHandler可以解决多进程安全切片，但性能损失惨重。
                     # 10进程各自写入10万条记录到同一个文件消耗15分钟。比不切片写入速度降低100倍。
@@ -355,12 +370,18 @@ class LogManager(object):
                                                                                           maxBytes=self._log_file_size * 1024 * 1024,
                                                                                           backupCount=nb_log_config_default.LOG_FILE_BACKUP_COUNT,
                                                                                           encoding="utf-8")
+
             elif self._log_file_handler_type == 4:
                 file_handler = WatchedFileHandler(log_file)
             elif self._log_file_handler_type == 2:
                 file_handler = ConcurrentDayRotatingFileHandler(self._log_filename, self._log_path, back_count=nb_log_config_default.LOG_FILE_BACKUP_COUNT)
             elif self._log_file_handler_type == 3:
                 file_handler = FileHandler(log_file, mode='a', encoding='utf-8')
+            elif self._log_file_handler_type == 5:
+                file_handler = ConcurrentRotatingFileHandler(log_file,
+                                                             maxBytes=self._log_file_size * 1024 * 1024,
+                                                             backupCount=nb_log_config_default.LOG_FILE_BACKUP_COUNT,
+                                                             encoding="utf-8")
             self.__add_a_hanlder(file_handler)
 
         # REMIND 添加mongo日志。
@@ -373,7 +394,7 @@ class LogManager(object):
             生产环境使用阿里云 oss日志，不使用这个。
             """
             self.__add_a_hanlder(
-                ElasticHandler([nb_log_config_default.ELASTIC_HOST], nb_log_config_default.ELASTIC_PORT))
+                ElasticHandler([nb_log_config_default.ELASTICSEARCH_URL], str(nb_log_config_default.ELASTIC_INDEX_PREFIX)))
 
         # REMIND 添加kafka日志。
         # if self._is_add_kafka_handler:
@@ -418,6 +439,8 @@ def get_logger(name: typing.Union[str, None], *, log_level_int: int = None, is_a
               2为多进程安全按天自动切割的文件日志，同一个文件，每天生成一个日志
               3为不自动切割的单个文件的日志(不切割文件就不会出现所谓进程安不安全的问题)
               4为 WatchedFileHandler，这个是需要在linux下才能使用，需要借助lograte外力进行日志文件的切割，多进程安全。
+              5 为第三方的concurrent_log_handler.ConcurrentRotatingFileHandler按日志文件大小切割的文件日志，
+                这个是采用了文件锁，多进程安全切割，文件锁在linux上使用fcntl性能还行，win上使用win32con性能非常惨。按大小切割建议不要选第5个个filehandler而是选择第1个。
        :param mongo_url : mongodb的连接，为None时候不添加mongohandler
        :param is_add_elastic_handler: 是否记录到es中。
        :param is_add_kafka_handler: 日志是否发布到kafka。
