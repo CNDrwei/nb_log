@@ -5,7 +5,6 @@
 
 使用覆盖的方式，做配置。
 """
-import os
 import sys
 import time
 import importlib
@@ -13,6 +12,7 @@ from pathlib import Path
 from nb_log import nb_log_config_default
 from nb_log.monkey_print import stdout_write, stderr_write, is_main_process
 from shutil import copyfile
+
 
 
 # noinspection PyProtectedMember,PyUnusedLocal,PyIncorrectDocstring,PyPep8
@@ -39,6 +39,8 @@ def nb_print(*args, sep=' ', end='\n', file=None):
                 f'\033[0;34m{time.strftime("%H:%M:%S")}  "{file_name}:{line}"   {sep.join(args)} {end} \033[0m')  # 36  93 96 94
         # sys.stdout.write(f'\033[0;30;44m"{file_name}:{line}"  {time.strftime("%H:%M:%S")}  {"".join(args)}\033[0m\n')
 
+
+nb_print(f'当前项目的根目录是：\n {sys.path[1]}')   # 如果获取的项目根目录不正确，请不要在python代码硬编码操作sys.path。pycahrm自动给项目根目录加了PYTHONPATh，如果是shell命令行运行python命令前脚本前先在会话中设置临时环境变量 export PYTHONPATH=项目根目录
 
 def show_nb_log_config():
     nb_print('显示nb_log 包的默认的低优先级的配置参数')
@@ -79,15 +81,19 @@ def auto_creat_config_file_to_project_root_path():
     :return:
     """
     if Path(sys.path[1]).as_posix() == Path(__file__).parent.parent.absolute().as_posix():
-        nb_print(f'不希望在本项目 {sys.path[1]} 里面创建 nb_log_config.py')
+        pass
+        nb_print('不希望在本项目 sys.path[1] 里面创建 nb_log_config.py')
         return
     # noinspection PyPep8
     """
         如果没设置PYTHONPATH，sys.path会这样，取第一个就会报错
         ['', '/data/miniconda3dir/inner/envs/mtfy/lib/python36.zip', '/data/miniconda3dir/inner/envs/mtfy/lib/python3.6', '/data/miniconda3dir/inner/envs/mtfy/lib/python3.6/lib-dynload', '/root/.local/lib/python3.6/site-packages', '/data/miniconda3dir/inner/envs/mtfy/lib/python3.6/site-packages']
-
+        
         ['', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\python36.zip', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\DLLs', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib', 'F:\\minicondadir\\Miniconda2\\envs\\py36', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\multiprocessing_log_manager-0.2.0-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\pyinstaller-3.4-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\pywin32_ctypes-0.2.0-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\altgraph-0.16.1-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\macholib-1.11-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\pefile-2019.4.18-py3.6.egg', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\win32', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\win32\\lib', 'F:\\minicondadir\\Miniconda2\\envs\\py36\\lib\\site-packages\\Pythonwin']
         """
+    if r'\plugins\python\helpers\pydev' in sys.path[1] or '/plugins/python/helpers/pydev' in sys.path[1]:
+        # 在pycharm中以debug启动, 会默认在pycharm的plugins\python\helpers\pydev位置生成nb_log_config文件
+        sys.path.remove(sys.path[1])
     if '/lib/python' in sys.path[1] or r'\lib\python' in sys.path[1] or '.zip' in sys.path[1]:
         raise EnvironmentError('''如果用pycahrm启动，默认不需要你手动亲自设置PYTHONPATH，如果你是cmd或者shell中直接敲击python xx.py 来运行，
                                报现在这个错误，你现在肯定是没有设置PYTHONPATH环境变量，不要设置永久环境变量，设置临时会话环境变量就行，
@@ -96,21 +102,11 @@ def auto_creat_config_file_to_project_root_path():
                                要是连PYTHONPATH这个知识点都不知道，那就要google 百度去学习PYTHONPATH作用了，非常重要非常好用，
                                不知道PYTHONPATH作用的人，在深层级文件夹作为运行起点导入外层目录的包的时候，如果把深层级文件作为python的执行文件起点，经常需要到处很low的手写 sys.path.insert硬编码，这种方式写代码太low了。
                                知道PYTHONPATH的人无论项目有多少层级的文件夹，无论是多深层级文件夹导入外层文件夹，代码里面永久都不需要出现手动硬编码操纵sys.path.append
-
+                               
                                懂PYTHONPATH 的重要性和妙用见： https://github.com/ydf0509/pythonpathdemo
                                ''')
-    # with (Path(sys.path[1]) / Path('nb_log_config.py')).open(mode='w', encoding='utf8') as f:
-    #     f.write(config_file_content)
-    if r'\plugins\python\helpers\pydev' in sys.path[1] or 'pydev' in sys.path[1]:
-        # 在pycharm中以debug启动, 会默认在pycharm的plugins\python\helpers\pydev位置生成nb_log_config文件
-        sys.path.remove(sys.path[1])
 
     copyfile(Path(__file__).parent / Path('nb_log_config_default.py'), Path(sys.path[1]) / Path('nb_log_config.py'))
 
-
-if r'\plugins\python\helpers\pydev' in sys.path[1] or 'pydev' in sys.path[1]:
-    # 在pycharm中以debug启动, 会默认在pycharm的plugins\python\helpers\pydev位置生成nb_log_config文件
-    sys.path.remove(sys.path[1])
-    nb_print(f'当前项目的根目录是：->  {sys.path[1]}')  # 如果获取的项目根目录不正确，请不要在python代码硬编码操作sys.path。pycahrm自动给项目根目录加了PYTHONPATh，如果是shell命令行运行python命令前脚本前先在会话中设置临时环境变量 export PYTHONPATH=项目根目录
 
 use_config_form_nb_log_config_module()
